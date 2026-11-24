@@ -22,9 +22,8 @@ def make_plan(endpoint: str):
 def test_executor_breaks_into_the_vulnerable_login(target_client):
     result = ExecutorAgent(target_client).run(make_plan("/login"), iteration=1)
     assert result.attack_succeeded
-    assert result.successful_attempts >= 1
-    winner = next(a for a in result.attempts if a.succeeded)
-    assert "admin" in winner.evidence
+    assert result.successful_attempts == len(result.attempts)
+    assert all("admin" in a.evidence for a in result.attempts)
 
 
 def test_executor_leaks_hidden_product_via_search(target_client):
@@ -41,11 +40,13 @@ def test_executor_reports_failure_once_parameterized_queries_are_on(target_clien
     assert all(a.status_code == 200 for a in result.attempts)
 
 
-def test_executor_reports_blocked_requests_behind_a_waf(target_client):
+def test_executor_still_breaks_in_behind_a_single_mitigation(target_client):
+    # A WAF is not enough: the obfuscated payload still gets through.
     set_defenses(target_client, "waf_rules")
     result = ExecutorAgent(target_client).run(make_plan("/login"), iteration=2)
-    assert not result.attack_succeeded
-    assert all("blocked" in a.evidence for a in result.attempts)
+    assert result.attack_succeeded
+    assert 0 < result.success_rate < 1.0
+    assert any("blocked" in a.evidence for a in result.attempts)
 
 
 def test_executor_rejects_unsupported_attack_types(target_client):

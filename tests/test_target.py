@@ -9,6 +9,11 @@ from .conftest import set_defenses
 SQLI_LOGIN = {"username": "' OR '1'='1' --", "password": "wrong"}
 SQLI_SEARCH = {"q": "' OR '1'='1' --"}
 
+# Bypass payloads: BOOLEAN_BYPASS has no comment token (defeats the blacklist validator),
+# OBFUSCATED_BYPASS hides the operators in inline comments (defeats the WAF too).
+BOOLEAN_BYPASS = {"username": "' OR '1'='1' OR '1'='1", "password": "wrong"}
+OBFUSCATED_BYPASS = {"username": "'/**/OR/**/'1'='1'/**/OR/**/'1'='1", "password": "wrong"}
+
 
 def test_defense_names_match_the_framework_catalog():
     assert ALL_DEFENSES == {d.value for d in DefenseId}
@@ -47,11 +52,31 @@ def test_login_injection_is_blocked_outright(target_client, defense):
     assert response.json() == {"authenticated": False, "blocked": defense}
 
 
+def test_waf_is_bypassed_by_the_obfuscated_payload(target_client):
+    set_defenses(target_client, "waf_rules")
+    assert target_client.post("/login", data=OBFUSCATED_BYPASS).json()["authenticated"] is True
+
+
+def test_input_validation_is_bypassed_by_the_boolean_payload(target_client):
+    set_defenses(target_client, "input_validation")
+    assert target_client.post("/login", data=BOOLEAN_BYPASS).json()["authenticated"] is True
+
+
+def test_stacked_mitigations_still_miss_the_obfuscated_payload(target_client):
+    set_defenses(target_client, "waf_rules", "input_validation")
+    assert target_client.post("/login", data=OBFUSCATED_BYPASS).json()["authenticated"] is True
+
+
 def test_parameterized_queries_defeat_login_injection(target_client):
     set_defenses(target_client, "parameterized_queries")
     response = target_client.post("/login", data=SQLI_LOGIN)
     assert response.status_code == 200
     assert response.json() == {"authenticated": False}
+
+
+def test_only_parameterized_queries_defeat_the_obfuscated_payload(target_client):
+    set_defenses(target_client, "parameterized_queries")
+    assert target_client.post("/login", data=OBFUSCATED_BYPASS).json() == {"authenticated": False}
 
 
 def test_parameterized_queries_defeat_search_injection(target_client):

