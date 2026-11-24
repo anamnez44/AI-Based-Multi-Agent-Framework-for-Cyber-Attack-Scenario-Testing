@@ -11,29 +11,14 @@ Usage:
 import argparse
 import time
 
-import httpx
-
-from cyberloop.agents import AnalystAgent, DefenderAgent, EvaluatorAgent, ExecutorAgent
 from cyberloop.config import Settings
-from cyberloop.llm import create_chat_model
-from cyberloop.orchestrator import LoopDeps, RunResult, run_scenario
-from cyberloop.target_control import TargetControl
+from cyberloop.factory import build_deps, target_client
+from cyberloop.orchestrator import RunResult, run_scenario
 
 DEFAULT_SCENARIO = (
     "The login form of a web application builds its SQL query from user input, so an attacker "
     "can log in as the administrator without knowing the password."
 )
-
-
-def build_deps(settings: Settings, client: httpx.Client) -> LoopDeps:
-    llm = create_chat_model(settings)
-    return LoopDeps(
-        analyst=AnalystAgent(llm, settings.llm_max_retries),
-        executor=ExecutorAgent(client),
-        evaluator=EvaluatorAgent(llm, settings.llm_max_retries),
-        defender=DefenderAgent(llm, settings.llm_max_retries),
-        control=TargetControl(client),
-    )
 
 
 def print_run(result: RunResult, seconds: float) -> None:
@@ -55,7 +40,7 @@ def print_run(result: RunResult, seconds: float) -> None:
 
 
 def run_mode(settings: Settings, scenario: str, mode: str) -> tuple[RunResult, float]:
-    with httpx.Client(base_url=settings.target_url, timeout=30) as client:
+    with target_client(settings) as client:
         client.get("/health").raise_for_status()
         deps = build_deps(settings, client)
         started = time.perf_counter()

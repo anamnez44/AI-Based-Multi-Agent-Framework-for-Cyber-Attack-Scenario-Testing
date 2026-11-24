@@ -46,7 +46,7 @@ Requirements: Python 3.11+, [Ollama](https://ollama.com), Docker Desktop (for th
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
+pip install -e ".[dev,api,ui]"
 Copy-Item .env.example .env
 ollama pull qwen3.5:4b
 pytest
@@ -56,8 +56,11 @@ python scripts/benchmark_llm.py
 Run the vulnerable target the agents attack:
 
 ```powershell
-docker compose up -d --build   # target on http://localhost:8080
-python scripts/run_scenario.py # run the loop, closed-loop vs single-pass
+docker compose up -d --build        # target on http://localhost:8080
+python scripts/run_scenario.py      # run the loop, closed-loop vs single-pass
+python scripts/run_experiments.py   # run the matrix into the history database
+uvicorn api.app:app                 # REST API on http://localhost:8000
+streamlit run ui/app.py             # dashboard on http://localhost:8501
 docker compose down
 ```
 
@@ -83,12 +86,17 @@ cyberloop/
   llm.py             chat model factory, structured calls with validation and retry
   target_facts.py    facts the framework uses to detect a successful attack
   target_control.py  enables and disables target defenses at runtime
+  storage.py         SQLite history of runs
+  factory.py         builds the agents and loop dependencies from settings
   agents/            Analyst, Executor, Evaluator, Defender
   orchestrator/      LangGraph closed loop and run state
 target/              vulnerable web app under test (Flask + Docker)
+api/                 FastAPI REST API over the run history
+ui/                  Streamlit dashboard
 scripts/
   benchmark_llm.py   latency and accuracy of the configured model on the Analyst task
   run_scenario.py    runs a scenario through the loop (closed-loop and single-pass)
+  run_experiments.py runs the scenario x mode x model matrix into the history
 tests/
 docker-compose.yml   runs the target in a container on http://localhost:8080
 ```
@@ -101,7 +109,7 @@ docker-compose.yml   runs the target in a container on http://localhost:8080
 - [x] Evaluator and Defender agents, LangGraph closed loop on SQL injection
 - [x] Credential-guessing scenario with layered login defenses
 - [ ] DDoS and phishing (web hardening) scenarios
-- [ ] SQLite test history, FastAPI, Streamlit dashboard
+- [x] SQLite run history, FastAPI REST API, Streamlit dashboard
 - [ ] Experiments: closed-loop vs single-pass, comparison of models
 
 ### On closed-loop vs single-pass
