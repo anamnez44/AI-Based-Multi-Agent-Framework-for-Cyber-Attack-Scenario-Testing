@@ -50,7 +50,19 @@ def main() -> None:
                 for mode in MODES:
                     for _ in range(args.repeats):
                         started = time.perf_counter()
-                        result = run_scenario(deps, scenario_text, mode, run_settings.max_iterations)
+                        try:
+                            result = run_scenario(
+                                deps, scenario_text, mode, run_settings.max_iterations
+                            )
+                        except Exception as exc:  # noqa: BLE001 - keep the matrix going
+                            duration = time.perf_counter() - started
+                            storage.save_failed_run(
+                                conn, scenario_text, scenario_name, mode,
+                                run_settings.llm_provider, model, duration, str(exc), batch,
+                            )
+                            summary[(model, scenario_name, mode)].append(None)
+                            print(f"{model:20} {scenario_name:14} {mode:12} FAILED: {exc}")
+                            continue
                         duration = time.perf_counter() - started
                         storage.save_run(
                             conn, result, run_settings.llm_provider, model, duration, batch
@@ -63,11 +75,14 @@ def main() -> None:
                         )
 
     print(f"\nbatch {batch} stored in {settings.history_db}")
-    print("\nprotected rate by model / scenario / mode:")
+    print("\nprotected rate by model / scenario / mode (over completed runs):")
     for key in sorted(summary):
         outcomes = summary[key]
-        rate = sum(outcomes) / len(outcomes)
-        print(f"  {key[0]:20} {key[1]:14} {key[2]:12} {rate:.0%} ({len(outcomes)} run/s)")
+        completed = [o for o in outcomes if o is not None]
+        failed = len(outcomes) - len(completed)
+        rate = f"{sum(completed) / len(completed):.0%}" if completed else "n/a"
+        note = f", {failed} failed" if failed else ""
+        print(f"  {key[0]:20} {key[1]:14} {key[2]:12} {rate} ({len(completed)} ok{note})")
 
 
 if __name__ == "__main__":

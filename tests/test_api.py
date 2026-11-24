@@ -38,3 +38,23 @@ def test_stats_group_by_mode(tmp_path):
     by_mode = {s["mode"]: s for s in stats}
     assert by_mode["closed_loop"]["protected_rate"] == 1.0
     assert by_mode["single_pass"]["protected_rate"] == 0.0
+
+
+def test_failed_runs_are_excluded_from_protected_rate(tmp_path):
+    db_path = str(tmp_path / "h.db")
+    conn = storage.connect(db_path)
+    storage.save_run(conn, make_result("closed_loop", blocked=True), "ollama", "tiny", 1.0, "b1")
+    storage.save_failed_run(
+        conn, "scenario text", "sql_injection", "closed_loop", "ollama", "tiny", 0.1, "boom", "b1"
+    )
+    conn.close()
+
+    client = TestClient(create_api(db_path))
+    runs = client.get("/runs").json()
+    assert {r["status"] for r in runs} == {"completed", "failed"}
+
+    row = next(s for s in client.get("/stats").json() if s["mode"] == "closed_loop")
+    assert row["runs"] == 2
+    assert row["completed"] == 1
+    assert row["failed"] == 1
+    assert row["protected_rate"] == 1.0

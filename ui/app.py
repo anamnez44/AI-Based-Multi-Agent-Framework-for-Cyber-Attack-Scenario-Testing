@@ -26,16 +26,18 @@ with st.sidebar:
                                default=list(df["attack_type"].unique()))
 
 view = df[df["model"].isin(models) & df["attack_type"].isin(scenarios)]
+done = view[view["status"] == "completed"]
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 c1.metric("Runs", len(view))
-c2.metric("Protected", f"{view['blocked'].mean():.0%}" if len(view) else "-")
-c3.metric("Avg iterations", f"{view['iterations'].mean():.1f}" if len(view) else "-")
+c2.metric("Completed", len(done))
+c3.metric("Failed", int((view["status"] != "completed").sum()))
+c4.metric("Protected", f"{done['blocked'].mean():.0%}" if len(done) else "-")
 
-st.subheader("Single-pass vs closed-loop")
-if len(view):
+st.subheader("Single-pass vs closed-loop (completed runs)")
+if len(done):
     comparison = (
-        view.groupby(["model", "attack_type", "mode"])
+        done.groupby(["model", "attack_type", "mode"])
         .agg(
             runs=("id", "count"),
             protected_rate=("blocked", "mean"),
@@ -56,8 +58,8 @@ if len(view):
 
 st.subheader("Recent runs")
 st.dataframe(
-    view[["id", "created_at", "model", "attack_type", "mode", "blocked", "iterations",
-          "final_success_rate", "defenses_applied", "duration_s"]],
+    view[["id", "created_at", "model", "attack_type", "mode", "status", "blocked", "iterations",
+          "final_success_rate", "defenses_applied", "duration_s", "error"]],
     use_container_width=True,
     hide_index=True,
 )

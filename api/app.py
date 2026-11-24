@@ -28,17 +28,20 @@ def _aggregate(runs: list[dict]) -> list[dict]:
         groups[(run["model"], run["scenario"], run["mode"])].append(run)
     stats = []
     for (model, scenario, mode), items in sorted(groups.items()):
-        count = len(items)
+        done = [r for r in items if r["status"] == "completed"]
+        n = len(done)
         stats.append(
             {
                 "model": model,
                 "scenario": scenario,
                 "mode": mode,
-                "runs": count,
-                "protected_rate": sum(r["blocked"] for r in items) / count,
-                "avg_iterations": sum(r["iterations"] for r in items) / count,
-                "avg_final_success": sum(r["final_success_rate"] for r in items) / count,
-                "avg_duration_s": sum(r["duration_s"] for r in items) / count,
+                "runs": len(items),
+                "completed": n,
+                "failed": len(items) - n,
+                "protected_rate": (sum(r["blocked"] for r in done) / n) if n else None,
+                "avg_iterations": (sum(r["iterations"] for r in done) / n) if n else None,
+                "avg_final_success": (sum(r["final_success_rate"] for r in done) / n) if n else None,
+                "avg_duration_s": (sum(r["duration_s"] for r in done) / n) if n else None,
             }
         )
     return stats

@@ -62,3 +62,20 @@ def test_get_run_includes_records(tmp_path):
 def test_get_missing_run_returns_none(tmp_path):
     conn = storage.connect(str(tmp_path / "h.db"))
     assert storage.get_run(conn, 999) is None
+
+
+def test_failed_run_is_recorded_with_reason(tmp_path):
+    conn = storage.connect(str(tmp_path / "h.db"))
+    storage.save_run(conn, make_result("closed_loop", blocked=True), "ollama", "big", 1.0)
+    storage.save_failed_run(
+        conn, "scenario", "sql_injection", "closed_loop", "ollama", "tiny", 0.5,
+        "no valid AttackPlan after 3 attempts",
+    )
+
+    runs = storage.list_runs(conn)
+    failed = next(r for r in runs if r["status"] == "failed")
+    assert failed["model"] == "tiny"
+    assert failed["attack_type"] == "sql_injection"
+    assert "no valid" in failed["error"]
+    completed = next(r for r in runs if r["status"] == "completed")
+    assert completed["error"] is None
