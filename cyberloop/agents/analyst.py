@@ -11,7 +11,7 @@ from ..schemas import AttackPlan
 def _techniques_text() -> str:
     lines = []
     for attack_type, techniques in MITRE_TECHNIQUES.items():
-        names = "; ".join(f"{technique_id} {name}" for technique_id, name in techniques.items())
+        names = "; ".join(f"{technique_id} ({name})" for technique_id, name in techniques.items())
         lines.append(f"- {attack_type.value}: {names}")
     return "\n".join(lines)
 
@@ -31,7 +31,8 @@ Endpoints of the target application:
 {_endpoints_text()}
 
 Rules:
-- attack_type must be one of the types above and mitre_technique_id must belong to that type.
+- attack_type must be one of the types above.
+- mitre_technique_id is only the ID of a technique of that type, for example T1190.
 - target_endpoint must be one of the endpoints above.
 - success_criteria: 1-3 short, observable conditions.
 - test_strategy: at most two sentences."""

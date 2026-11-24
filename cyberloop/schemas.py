@@ -35,7 +35,10 @@ class AttackPlan(BaseModel):
     """Analyst -> Executor. Produced entirely by the LLM."""
 
     attack_type: AttackType
-    mitre_technique_id: str = Field(description="MITRE ATT&CK technique ID from the catalog, e.g. T1190")
+    mitre_technique_id: str = Field(
+        pattern=r"^T\d{4}(\.\d{3})?$",
+        description="Only the MITRE ATT&CK technique ID from the catalog, e.g. T1190 or T1110.001",
+    )
     target_endpoint: str = Field(description="Endpoint of the target application to test, e.g. /login")
     test_strategy: str = Field(description="At most two sentences on how to test the target")
     success_criteria: list[str] = Field(description="1-3 observable conditions meaning the attack succeeded")

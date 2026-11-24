@@ -39,13 +39,27 @@ def test_computed_metrics_are_serialized():
     assert ExecutionResult.model_validate(data).attack_succeeded
 
 
-def test_plan_rejects_confidence_outside_range():
+VALID_PLAN = dict(
+    attack_type=AttackType.DDOS,
+    mitre_technique_id="T1499.002",
+    target_endpoint="/products",
+    test_strategy="Flood the search endpoint.",
+    success_criteria=["Requests time out"],
+    confidence=0.8,
+)
+
+
+def test_plan_accepts_sub_technique_id():
+    assert AttackPlan(**VALID_PLAN).mitre_technique_id == "T1499.002"
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("confidence", 1.5),
+        ("mitre_technique_id", "T1499.002 Service Exhaustion Flood"),
+    ],
+)
+def test_plan_rejects_invalid_values(field, value):
     with pytest.raises(ValidationError):
-        AttackPlan(
-            attack_type=AttackType.DDOS,
-            mitre_technique_id="T1499.002",
-            target_endpoint="/products",
-            test_strategy="Flood the search endpoint.",
-            success_criteria=["Requests time out"],
-            confidence=1.5,
-        )
+        AttackPlan(**{**VALID_PLAN, field: value})
