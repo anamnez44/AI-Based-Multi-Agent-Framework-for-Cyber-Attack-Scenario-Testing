@@ -57,6 +57,7 @@ Run the vulnerable target the agents attack:
 
 ```powershell
 docker compose up -d --build   # target on http://localhost:8080
+python scripts/run_scenario.py # run the loop, closed-loop vs single-pass
 docker compose down
 ```
 
@@ -81,10 +82,13 @@ cyberloop/
   catalog.py         MITRE ATT&CK techniques, defense whitelist, target endpoints
   llm.py             chat model factory, structured calls with validation and retry
   target_facts.py    facts the framework uses to detect a successful attack
-  agents/            Analyst, Executor (Evaluator and Defender are next)
+  target_control.py  enables and disables target defenses at runtime
+  agents/            Analyst, Executor, Evaluator, Defender
+  orchestrator/      LangGraph closed loop and run state
 target/              vulnerable web app under test (Flask + Docker)
 scripts/
   benchmark_llm.py   latency and accuracy of the configured model on the Analyst task
+  run_scenario.py    runs a scenario through the loop (closed-loop and single-pass)
 tests/
 docker-compose.yml   runs the target in a container on http://localhost:8080
 ```
@@ -94,10 +98,21 @@ docker-compose.yml   runs the target in a container on http://localhost:8080
 - [x] Foundation: contracts, provider-independent LLM layer, Analyst agent, LLM benchmark
 - [x] Vulnerable target application in Docker with switchable defenses
 - [x] Executor agent: runs SQL injection and records the results
-- [ ] Evaluator and Defender agents, LangGraph closed loop on SQL injection
+- [x] Evaluator and Defender agents, LangGraph closed loop on SQL injection
 - [ ] Brute force, DDoS and phishing (web hardening) scenarios
 - [ ] SQLite test history, FastAPI, Streamlit dashboard
 - [ ] Experiments: closed-loop vs single-pass, comparison of models
+
+### On closed-loop vs single-pass
+
+The three SQL-injection defenses are deliberately unequal: `waf_rules` and `input_validation`
+are mitigations that an obfuscated payload can bypass, while `parameterized_queries` removes the
+vulnerability. So the closed loop pays off exactly when the first chosen defense is insufficient:
+it re-tests, sees the attack still works, and escalates until the target is protected, whereas a
+single pass stops after one defense and may stay exploitable. For textbook SQL injection a capable
+model picks the root fix first, so both modes protect the target in one step; the measurable gap is
+expected to grow with weaker models and with attack types that need layered defenses. The closed
+loop also always *verifies* the final state instead of assuming the defense worked.
 
 ## License
 
