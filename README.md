@@ -99,7 +99,8 @@ docker-compose.yml   runs the target in a container on http://localhost:8080
 - [x] Vulnerable target application in Docker with switchable defenses
 - [x] Executor agent: runs SQL injection and records the results
 - [x] Evaluator and Defender agents, LangGraph closed loop on SQL injection
-- [ ] Brute force, DDoS and phishing (web hardening) scenarios
+- [x] Credential-guessing scenario with layered login defenses
+- [ ] DDoS and phishing (web hardening) scenarios
 - [ ] SQLite test history, FastAPI, Streamlit dashboard
 - [ ] Experiments: closed-loop vs single-pass, comparison of models
 

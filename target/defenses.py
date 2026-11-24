@@ -37,6 +37,13 @@ _WAF_SIGNATURE = re.compile(
 # quotes, so a boolean injection that avoids those tokens slips through.
 _INPUT_BLACKLIST = ("--", ";", "union", "drop")
 
+# Login defenses for the credential-guessing scenario. The thresholds are low so the behaviour is
+# easy to observe. login_delay only slows guessing down; the other two stop a rapid campaign.
+LOCKOUT_THRESHOLD = 5
+RATE_LIMIT_MAX = 5
+RATE_LIMIT_WINDOW = 60.0
+LOGIN_DELAY_SECONDS = 0.05
+
 
 def matches_waf_signature(value: str) -> bool:
     return _WAF_SIGNATURE.search(value) is not None

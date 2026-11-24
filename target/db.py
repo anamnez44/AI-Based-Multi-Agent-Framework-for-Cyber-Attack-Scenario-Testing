@@ -6,10 +6,16 @@ SECRET_PRODUCT = "FLAG-SECRET-PRODUCT"
 ADMIN_USER = "admin"
 ADMIN_PASSWORD = "S3cr3t_Admin_Pw!"
 
+# A deliberately weak account for the credential-guessing scenario. Its password appears in the
+# Executor's wordlist, so the guessing attack can find it unless a login defense stops it first.
+WEAK_USER = "operator"
+WEAK_PASSWORD = "Password1"
+
 _USERS = [
     (1, ADMIN_USER, ADMIN_PASSWORD),
     (2, "alice", "alice-pw"),
     (3, "bob", "bob-pw"),
+    (4, WEAK_USER, WEAK_PASSWORD),
 ]
 
 # is_secret rows must never appear in search results unless the query is injected.

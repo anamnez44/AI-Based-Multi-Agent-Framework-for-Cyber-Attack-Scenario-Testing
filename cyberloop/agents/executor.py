@@ -31,6 +31,19 @@ SQLI_SEARCH_PAYLOADS = [
 
 WRONG_PASSWORD = "not-the-password-42"
 
+# Credential-guessing scenario: a short wordlist whose last entry is the weak account's password.
+BRUTE_FORCE_USERNAME = "operator"
+PASSWORD_WORDLIST = [
+    "123456",
+    "password",
+    "qwerty",
+    "111111",
+    "iloveyou",
+    "admin",
+    "welcome",
+    "Password1",
+]
+
 
 class ExecutorAgent:
     def __init__(self, client: httpx.Client):
@@ -40,6 +53,8 @@ class ExecutorAgent:
         started = time.perf_counter()
         if plan.attack_type == AttackType.SQL_INJECTION:
             attempts = self._sql_injection(plan.target_endpoint)
+        elif plan.attack_type == AttackType.BRUTE_FORCE:
+            attempts = self._brute_force()
         else:
             raise NotImplementedError(f"Executor does not yet support {plan.attack_type.value}")
         return ExecutionResult(
@@ -69,6 +84,29 @@ class ExecutorAgent:
             evidence=_login_evidence(authenticated, body),
             latency_ms=latency_ms,
         )
+
+    def _brute_force(self) -> list[AttemptResult]:
+        attempts: list[AttemptResult] = []
+        for index, guess in enumerate(PASSWORD_WORDLIST, start=1):
+            started = time.perf_counter()
+            response = self.client.post(
+                "/login", data={"username": BRUTE_FORCE_USERNAME, "password": guess}
+            )
+            latency_ms = (time.perf_counter() - started) * 1000
+            body = _json(response)
+            found = body.get("authenticated") is True
+            attempts.append(
+                AttemptResult(
+                    payload=f"{BRUTE_FORCE_USERNAME}: guess #{index}",
+                    status_code=response.status_code,
+                    succeeded=found,
+                    evidence=_brute_force_evidence(found, body),
+                    latency_ms=latency_ms,
+                )
+            )
+            if found or body.get("blocked"):
+                break
+        return attempts
 
     def _inject_search(self, path: str, payload: str) -> AttemptResult:
         started = time.perf_counter()
@@ -107,3 +145,11 @@ def _search_evidence(leaked: bool, body: dict) -> str:
     if body.get("blocked"):
         return f"request blocked by {body['blocked']}"
     return "no hidden data returned"
+
+
+def _brute_force_evidence(found: bool, body: dict) -> str:
+    if found:
+        return f"valid credentials found for {BRUTE_FORCE_USERNAME}"
+    if body.get("blocked"):
+        return f"request blocked by {body['blocked']}"
+    return "credentials rejected"
