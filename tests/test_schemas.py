@@ -53,13 +53,16 @@ def test_plan_accepts_sub_technique_id():
     assert AttackPlan(**VALID_PLAN).mitre_technique_id == "T1499.002"
 
 
-@pytest.mark.parametrize(
-    "field, value",
-    [
-        ("confidence", 1.5),
-        ("mitre_technique_id", "T1499.002 Service Exhaustion Flood"),
-    ],
-)
-def test_plan_rejects_invalid_values(field, value):
+@pytest.mark.parametrize("value, expected", [(95, 0.95), (100, 1.0), (0.9, 0.9), (0, 0.0)])
+def test_plan_normalizes_percentage_confidence(value, expected):
+    assert AttackPlan(**{**VALID_PLAN, "confidence": value}).confidence == expected
+
+
+def test_plan_rejects_non_numeric_confidence():
     with pytest.raises(ValidationError):
-        AttackPlan(**{**VALID_PLAN, field: value})
+        AttackPlan(**{**VALID_PLAN, "confidence": "very sure"})
+
+
+def test_plan_rejects_technique_id_with_extra_text():
+    with pytest.raises(ValidationError):
+        AttackPlan(**{**VALID_PLAN, "mitre_technique_id": "T1499.002 Service Exhaustion Flood"})

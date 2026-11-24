@@ -35,7 +35,8 @@ Rules:
 - mitre_technique_id is only the ID of a technique of that type, for example T1190.
 - target_endpoint must be one of the endpoints above.
 - success_criteria: 1-3 short, observable conditions.
-- test_strategy: at most two sentences."""
+- test_strategy: at most two sentences.
+- confidence: a number between 0.0 and 1.0."""
 
 
 def check_plan(plan: AttackPlan) -> None:

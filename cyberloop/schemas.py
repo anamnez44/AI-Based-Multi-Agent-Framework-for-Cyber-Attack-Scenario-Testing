@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 
 class AttackType(StrEnum):
@@ -43,6 +43,18 @@ class AttackPlan(BaseModel):
     test_strategy: str = Field(description="At most two sentences on how to test the target")
     success_criteria: list[str] = Field(description="1-3 observable conditions meaning the attack succeeded")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence of the classification between 0 and 1")
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _normalize_confidence(cls, value):
+        """Accept a percentage too: smaller models often answer 95 or 100 instead of 0.0-1.0."""
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return value
+        if number > 1.0:
+            number /= 100.0
+        return max(0.0, min(1.0, number))
 
 
 class AttemptResult(BaseModel):
