@@ -11,9 +11,10 @@ dist/
 .venv/
 .env
 
-# Runtime output: test history, benchmark results, reports
+# Runtime output: test history, benchmark results, reports, server logs
 data/
 results/
+*.log
 
 # IDE and OS
 .vscode/
