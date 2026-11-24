@@ -1,0 +1,9 @@
+services:
+  target:
+    build: ./target
+    container_name: cyberloop-target
+    ports:
+      - "8080:8080"
+    mem_limit: 256m
+    cpus: 1.0
+    restart: unless-stopped
