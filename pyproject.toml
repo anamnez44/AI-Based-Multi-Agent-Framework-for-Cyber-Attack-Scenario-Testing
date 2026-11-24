@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cyberloop"
+version = "0.1.0"
+description = "Multi-agent AI framework for closed-loop testing and neutralization of cyber attack scenarios"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "langgraph>=1.0",
+    "langchain-core>=1.0",
+    "langchain-ollama>=1.0",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+openai = ["langchain-openai>=1.0"]
+anthropic = ["langchain-anthropic>=1.0"]
+dev = ["pytest>=8", "flask>=3.0"]
+
+[tool.setuptools.packages.find]
+include = ["cyberloop*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

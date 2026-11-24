@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Environments and secrets
+.venv/
+.env
+
+# Runtime output: test history, benchmark results, reports
+data/
+results/
+
+# IDE and OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Thesis text stays out of the public repo: plagiarism checks match it against internet sources
+/Praca inzynierska/
+/Praca prejsciowa/
+/build_*.py
+/check_compliance.py
