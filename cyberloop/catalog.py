@@ -2,6 +2,8 @@
 
 from .schemas import AttackType, DefenseId
 
+__all__ = ["MITRE_TECHNIQUES", "DEFENSES", "TARGET_ENDPOINTS", "DEFENSE_DESCRIPTIONS", "defenses_for"]
+
 MITRE_TECHNIQUES: dict[AttackType, dict[str, str]] = {
     AttackType.SQL_INJECTION: {
         "T1190": "Exploit Public-Facing Application",
@@ -48,3 +50,21 @@ TARGET_ENDPOINTS: dict[str, str] = {
     "/products": "GET product search with query parameter q",
     "/": "HTML home page",
 }
+
+# Factual descriptions only. They must not say which defense is best or which can be bypassed:
+# the whole point of the experiment is to measure how well the agents judge that themselves.
+DEFENSE_DESCRIPTIONS: dict[DefenseId, str] = {
+    DefenseId.INPUT_VALIDATION: "Reject requests whose input contains blacklisted SQL keywords or comment tokens.",
+    DefenseId.WAF_RULES: "Inspect requests at the perimeter and block those matching SQL-injection signatures.",
+    DefenseId.PARAMETERIZED_QUERIES: "Send user input to the database as bound parameters kept separate from the SQL text.",
+    DefenseId.LOGIN_DELAY: "Add a growing delay after failed logins to slow down guessing.",
+    DefenseId.ACCOUNT_LOCKOUT: "Lock an account after several failed logins.",
+    DefenseId.RATE_LIMITING: "Cap the number of requests per client over a time window.",
+    DefenseId.RESPONSE_CACHING: "Serve cached responses to absorb floods of identical requests.",
+    DefenseId.SECURITY_HEADERS: "Send protective HTTP headers such as X-Frame-Options and X-Content-Type-Options.",
+    DefenseId.CONTENT_SECURITY_POLICY: "Restrict where content may load from to limit clickjacking and injection.",
+}
+
+
+def defenses_for(attack_type: AttackType) -> list[DefenseId]:
+    return DEFENSES[attack_type]
