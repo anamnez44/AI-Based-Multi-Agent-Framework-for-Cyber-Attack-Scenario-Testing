@@ -55,4 +55,5 @@ def test_ollama_model_is_configured_from_settings():
     assert model.seed == 7
     assert model.num_ctx == 2048
     assert model.temperature == 0.0
+    assert model.keep_alive == "30m"
     assert model.reasoning is False

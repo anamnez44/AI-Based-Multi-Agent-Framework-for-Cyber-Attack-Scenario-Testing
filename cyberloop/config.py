@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     llm_seed: int = 42
     llm_max_retries: int = 2
     llm_num_ctx: int = 4096
+    llm_keep_alive: str = "30m"
     ollama_base_url: str = "http://localhost:11434"
     openai_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None

@@ -24,6 +24,7 @@ def create_chat_model(settings: Settings) -> BaseChatModel:
             temperature=settings.llm_temperature,
             seed=settings.llm_seed,
             num_ctx=settings.llm_num_ctx,
+            keep_alive=settings.llm_keep_alive,
             reasoning=False,
         )
     if settings.llm_provider == "openai":
