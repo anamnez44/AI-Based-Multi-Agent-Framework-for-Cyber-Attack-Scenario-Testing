@@ -79,3 +79,42 @@ def test_failed_run_is_recorded_with_reason(tmp_path):
     assert "no valid" in failed["error"]
     completed = next(r for r in runs if r["status"] == "completed")
     assert completed["error"] is None
+
+
+def test_misclassified_run_does_not_count_as_protected(tmp_path):
+    conn = storage.connect(str(tmp_path / "h.db"))
+    # Blocked, but the Analyst attacked SQLi while the scenario was brute force.
+    storage.save_run(
+        conn, make_result("closed_loop", blocked=True), "ollama", "tiny", 1.0,
+        intended_attack_type="brute_force", seed=7, temperature=0.4,
+    )
+    run = storage.list_runs(conn)[0]
+    assert run["blocked"] is True
+    assert run["misclassified"] is True
+    assert run["protected_effective"] is False
+    assert run["seed"] == 7
+
+
+def test_correctly_classified_block_is_effective_protection(tmp_path):
+    conn = storage.connect(str(tmp_path / "h.db"))
+    storage.save_run(
+        conn, make_result("closed_loop", blocked=True), "ollama", "big", 1.0,
+        intended_attack_type="sql_injection",
+    )
+    run = storage.list_runs(conn)[0]
+    assert run["misclassified"] is False
+    assert run["protected_effective"] is True
+
+
+def test_export_csv_writes_rows(tmp_path):
+    conn = storage.connect(str(tmp_path / "h.db"))
+    storage.save_run(conn, make_result("closed_loop", blocked=True), "ollama", "m", 1.0, "b1",
+                     intended_attack_type="sql_injection")
+    storage.save_run(conn, make_result("single_pass", blocked=False), "ollama", "m", 1.0, "b1",
+                     intended_attack_type="sql_injection")
+    out = tmp_path / "out.csv"
+    assert storage.export_csv(conn, str(out), batch="b1") == 2
+    lines = out.read_text(encoding="utf-8").splitlines()
+    assert lines[0].startswith("id,created_at,batch")
+    assert len(lines) == 3  # header + 2 rows
+    assert "protected_effective" in lines[0]

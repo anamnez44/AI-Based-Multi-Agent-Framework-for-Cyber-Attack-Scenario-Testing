@@ -43,7 +43,8 @@ def test_stats_group_by_mode(tmp_path):
 def test_failed_runs_are_excluded_from_protected_rate(tmp_path):
     db_path = str(tmp_path / "h.db")
     conn = storage.connect(db_path)
-    storage.save_run(conn, make_result("closed_loop", blocked=True), "ollama", "tiny", 1.0, "b1")
+    storage.save_run(conn, make_result("closed_loop", blocked=True), "ollama", "tiny", 1.0, "b1",
+                     intended_attack_type="sql_injection")
     storage.save_failed_run(
         conn, "scenario text", "sql_injection", "closed_loop", "ollama", "tiny", 0.1, "boom", "b1"
     )
@@ -58,3 +59,15 @@ def test_failed_runs_are_excluded_from_protected_rate(tmp_path):
     assert row["completed"] == 1
     assert row["failed"] == 1
     assert row["protected_rate"] == 1.0
+
+
+def test_misclassified_run_is_not_counted_as_protected(tmp_path):
+    db_path = str(tmp_path / "h.db")
+    conn = storage.connect(db_path)
+    storage.save_run(conn, make_result("closed_loop", blocked=True), "ollama", "tiny", 1.0, "b1",
+                     intended_attack_type="brute_force")
+    conn.close()
+
+    row = next(s for s in TestClient(create_api(db_path)).get("/stats").json())
+    assert row["misclassified"] == 1
+    assert row["protected_rate"] == 0.0

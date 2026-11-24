@@ -37,8 +37,10 @@ def _aggregate(runs: list[dict]) -> list[dict]:
                 "mode": mode,
                 "runs": len(items),
                 "completed": n,
-                "failed": len(items) - n,
-                "protected_rate": (sum(r["blocked"] for r in done) / n) if n else None,
+                "failed": sum(r["status"] != "completed" for r in items),
+                "misclassified": sum(r["misclassified"] for r in done),
+                "protected_rate": (sum(r["protected_effective"] for r in done) / n) if n else None,
+                "misclassified_rate": (sum(r["misclassified"] for r in done) / n) if n else None,
                 "avg_iterations": (sum(r["iterations"] for r in done) / n) if n else None,
                 "avg_final_success": (sum(r["final_success_rate"] for r in done) / n) if n else None,
                 "avg_duration_s": (sum(r["duration_s"] for r in done) / n) if n else None,
@@ -87,7 +89,10 @@ def create_api(db_path: str | None = None) -> FastAPI:
         except Exception as exc:  # noqa: BLE001 - surface any wiring/runtime issue to the caller
             raise HTTPException(status_code=502, detail=f"run failed: {exc}") from exc
         with closing(storage.connect(db_path)) as conn:
-            storage.save_run(conn, result, run_settings.llm_provider, run_settings.llm_model, 0.0)
+            storage.save_run(
+                conn, result, run_settings.llm_provider, run_settings.llm_model, 0.0,
+                seed=run_settings.llm_seed, temperature=run_settings.llm_temperature,
+            )
         return result
 
     return app

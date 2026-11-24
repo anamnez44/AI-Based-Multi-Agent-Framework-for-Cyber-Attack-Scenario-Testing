@@ -1,9 +1,11 @@
-"""SQLite history of loop runs, shared by the API and the dashboard.
+"""SQLite history of loop runs, shared by the API, the dashboard and the CSV export.
 
-A run is stored either as "completed" (a full RunResult) or as "failed" (the model did not produce
-a usable answer); failed runs keep the reason so the experiment matrix can carry on.
+A run is stored as "completed" (a full RunResult) or "failed" (the model never produced a usable
+answer). A completed run is also flagged "misclassified" when the Analyst picked a different attack
+type than the scenario intended; such a run does not count as a protection even if it ended blocked.
 """
 
+import csv
 import json
 import sqlite3
 from datetime import datetime, timezone
@@ -18,7 +20,10 @@ CREATE TABLE IF NOT EXISTS runs (
     batch TEXT,
     provider TEXT NOT NULL,
     model TEXT NOT NULL,
+    seed INTEGER,
+    temperature REAL,
     scenario TEXT NOT NULL,
+    intended_attack_type TEXT,
     attack_type TEXT NOT NULL,
     target_endpoint TEXT NOT NULL,
     mode TEXT NOT NULL,
@@ -36,15 +41,31 @@ CREATE TABLE IF NOT EXISTS runs (
 """
 
 _COLUMNS = (
-    "created_at", "batch", "provider", "model", "scenario", "attack_type", "target_endpoint",
-    "mode", "status", "error", "blocked", "stop_reason", "iterations", "defenses_applied",
-    "initial_success_rate", "final_success_rate", "duration_s", "records_json",
+    "created_at", "batch", "provider", "model", "seed", "temperature", "scenario",
+    "intended_attack_type", "attack_type", "target_endpoint", "mode", "status", "error",
+    "blocked", "stop_reason", "iterations", "defenses_applied", "initial_success_rate",
+    "final_success_rate", "duration_s", "records_json",
 )
 
 _SUMMARY_COLUMNS = (
-    "id, created_at, batch, provider, model, scenario, attack_type, target_endpoint, mode, "
-    "status, error, blocked, stop_reason, iterations, defenses_applied, initial_success_rate, "
-    "final_success_rate, duration_s"
+    "id, created_at, batch, provider, model, seed, temperature, scenario, intended_attack_type, "
+    "attack_type, target_endpoint, mode, status, error, blocked, stop_reason, iterations, "
+    "defenses_applied, initial_success_rate, final_success_rate, duration_s"
+)
+
+_MIGRATIONS = {
+    "status": "ALTER TABLE runs ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'",
+    "error": "ALTER TABLE runs ADD COLUMN error TEXT",
+    "seed": "ALTER TABLE runs ADD COLUMN seed INTEGER",
+    "temperature": "ALTER TABLE runs ADD COLUMN temperature REAL",
+    "intended_attack_type": "ALTER TABLE runs ADD COLUMN intended_attack_type TEXT",
+}
+
+_CSV_FIELDS = (
+    "id", "created_at", "batch", "provider", "model", "seed", "temperature", "intended_attack_type",
+    "attack_type", "mode", "status", "misclassified", "protected_effective", "blocked",
+    "stop_reason", "iterations", "defenses_applied", "initial_success_rate", "final_success_rate",
+    "duration_s", "error",
 )
 
 
@@ -59,10 +80,9 @@ def connect(path: str) -> sqlite3.Connection:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(runs)")}
-    if "status" not in columns:
-        conn.execute("ALTER TABLE runs ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'")
-    if "error" not in columns:
-        conn.execute("ALTER TABLE runs ADD COLUMN error TEXT")
+    for name, statement in _MIGRATIONS.items():
+        if name not in columns:
+            conn.execute(statement)
     conn.commit()
 
 
@@ -83,6 +103,9 @@ def save_run(
     model: str,
     duration_s: float,
     batch: str | None = None,
+    intended_attack_type: str | None = None,
+    seed: int | None = None,
+    temperature: float | None = None,
 ) -> int:
     return _insert(
         conn,
@@ -91,7 +114,10 @@ def save_run(
             "batch": batch,
             "provider": provider,
             "model": model,
+            "seed": seed,
+            "temperature": temperature,
             "scenario": result.scenario,
+            "intended_attack_type": intended_attack_type or result.plan.attack_type.value,
             "attack_type": result.plan.attack_type.value,
             "target_endpoint": result.plan.target_endpoint,
             "mode": result.mode,
@@ -119,6 +145,8 @@ def save_failed_run(
     duration_s: float,
     error: str,
     batch: str | None = None,
+    seed: int | None = None,
+    temperature: float | None = None,
 ) -> int:
     """Record a run that could not complete, so the experiment matrix can move on."""
     return _insert(
@@ -128,7 +156,10 @@ def save_failed_run(
             "batch": batch,
             "provider": provider,
             "model": model,
+            "seed": seed,
+            "temperature": temperature,
             "scenario": scenario,
+            "intended_attack_type": attack_type,
             "attack_type": attack_type,
             "target_endpoint": "",
             "mode": mode,
@@ -150,6 +181,12 @@ def _to_summary(row: sqlite3.Row) -> dict:
     data = dict(row)
     data["blocked"] = bool(data["blocked"])
     data["defenses_applied"] = json.loads(data["defenses_applied"])
+    intended = data.get("intended_attack_type")
+    data["misclassified"] = bool(
+        data["status"] == "completed" and intended and intended != data["attack_type"]
+    )
+    # A misclassified run defended against the wrong attack, so it is not a real protection.
+    data["protected_effective"] = bool(data["blocked"] and not data["misclassified"])
     return data
 
 
@@ -167,3 +204,17 @@ def get_run(conn: sqlite3.Connection, run_id: int) -> dict | None:
     data = _to_summary(row)
     data["records"] = json.loads(row["records_json"])
     return data
+
+
+def export_csv(conn: sqlite3.Connection, path: str, batch: str | None = None) -> int:
+    runs = list_runs(conn, limit=1_000_000)
+    if batch is not None:
+        runs = [run for run in runs if run["batch"] == batch]
+    with open(path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=_CSV_FIELDS, extrasaction="ignore")
+        writer.writeheader()
+        for run in runs:
+            row = dict(run)
+            row["defenses_applied"] = "; ".join(run["defenses_applied"])
+            writer.writerow(row)
+    return len(runs)
