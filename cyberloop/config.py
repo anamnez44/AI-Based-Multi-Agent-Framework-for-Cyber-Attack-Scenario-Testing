@@ -22,3 +22,4 @@ class Settings(BaseSettings):
 
     target_url: str = "http://localhost:8080"
     max_iterations: int = 3
+    history_db: str = "data/history.db"
