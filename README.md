@@ -53,6 +53,13 @@ pytest
 python scripts/benchmark_llm.py
 ```
 
+Run the vulnerable target the agents attack:
+
+```powershell
+docker compose up -d --build   # target on http://localhost:8080
+docker compose down
+```
+
 To use a cloud model instead, install the matching extra and edit `.env`:
 
 ```powershell
@@ -73,17 +80,21 @@ cyberloop/
   schemas.py         handoff contracts between agents
   catalog.py         MITRE ATT&CK techniques, defense whitelist, target endpoints
   llm.py             chat model factory, structured calls with validation and retry
-  agents/            Analyst (Executor, Evaluator and Defender are next)
+  target_facts.py    facts the framework uses to detect a successful attack
+  agents/            Analyst, Executor (Evaluator and Defender are next)
+target/              vulnerable web app under test (Flask + Docker)
 scripts/
   benchmark_llm.py   latency and accuracy of the configured model on the Analyst task
 tests/
+docker-compose.yml   runs the target in a container on http://localhost:8080
 ```
 
 ## Roadmap
 
 - [x] Foundation: contracts, provider-independent LLM layer, Analyst agent, LLM benchmark
-- [ ] Vulnerable target application in Docker with switchable defenses
-- [ ] Executor, Evaluator and Defender agents, LangGraph closed loop on SQL injection
+- [x] Vulnerable target application in Docker with switchable defenses
+- [x] Executor agent: runs SQL injection and records the results
+- [ ] Evaluator and Defender agents, LangGraph closed loop on SQL injection
 - [ ] Brute force, DDoS and phishing (web hardening) scenarios
 - [ ] SQLite test history, FastAPI, Streamlit dashboard
 - [ ] Experiments: closed-loop vs single-pass, comparison of models
