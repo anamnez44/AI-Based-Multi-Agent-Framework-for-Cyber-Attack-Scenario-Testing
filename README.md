@@ -59,6 +59,7 @@ Run the vulnerable target the agents attack:
 docker compose up -d --build        # target on http://localhost:8080
 python scripts/run_scenario.py      # run the loop, closed-loop vs single-pass
 python scripts/run_experiments.py   # run the matrix into the history database
+python scripts/export_results.py    # export the history to results/history.csv
 uvicorn api.app:app                 # REST API on http://localhost:8000
 streamlit run ui/app.py             # dashboard on http://localhost:8501
 docker compose down
@@ -110,7 +111,7 @@ docker-compose.yml   runs the target in a container on http://localhost:8080
 - [x] Credential-guessing scenario with layered login defenses
 - [ ] DDoS and phishing (web hardening) scenarios
 - [x] SQLite run history, FastAPI REST API, Streamlit dashboard
-- [ ] Experiments: closed-loop vs single-pass, comparison of models
+- [x] Experiments: closed-loop vs single-pass across models, with CSV export
 
 ### On closed-loop vs single-pass
 

@@ -210,6 +210,7 @@ def export_csv(conn: sqlite3.Connection, path: str, batch: str | None = None) ->
     runs = list_runs(conn, limit=1_000_000)
     if batch is not None:
         runs = [run for run in runs if run["batch"] == batch]
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=_CSV_FIELDS, extrasaction="ignore")
         writer.writeheader()
