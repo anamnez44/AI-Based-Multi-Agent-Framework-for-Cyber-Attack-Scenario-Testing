@@ -11,9 +11,9 @@ dist/
 .venv/
 .env
 
-# Runtime output: test history, benchmark results, reports, server logs
+# Runtime output: test history, server logs. Dated result exports are kept in git on purpose.
 data/
-results/
+results/history.csv
 *.log
 
 # IDE and OS
